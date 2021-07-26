@@ -70,18 +70,23 @@ echo "---Starting X server---"
 xinit &
 sleep 10
 echo "---Adjusting GPU values---"
-nvidia-smi -i $NSFMINER_GPU -pl $NSFMINER_GPUPOWERLIMIT
-nvidia-settings -a [gpu:$NSFMINER_GPU]/GPUPowerMizerMode=$NSFMINER_POWERMIZER
-nvidia-settings -a [gpu:$NSFMINER_GPU]/GPUGraphicsClockOffsetAllPerformanceLevels=$NSFMINER_GPUGFXCLOCKOFFSET
-nvidia-settings -a [gpu:$NSFMINER_GPU]/GPUMemoryTransferRateOffsetAllPerformanceLevels=$NSFMINER_GPUMEMCLOCKOFFSET
-nvidia-settings -a [gpu:$NSFMINER_GPU]/GPUFanControlState=$NSFMINER_GPUFANCONTROLL
-if [ $NSFMINER_GPUFANCONTROLL == 1 ]; then
-  nvidia-settings -a [fan:$NSFMINER_GPUFAN1]/GPUTargetFanSpeed=$NSFMINER_GPUFANSPEED1
-  nvidia-settings -a [fan:$NSFMINER_GPUFAN2]/GPUTargetFanSpeed=$NSFMINER_GPUFANSPEED2
+if [[ $NSFMINER_GPU = "all" ]]
+then
+  IDS=$(eval echo {0..$(nvidia-smi -L | wc -l)})
+else
+  IFS=',' read -ra IDS <<< "$NSFMINER_GPU"
+  IDS="${IDS[@]}"
 fi
+for i in IDS
+do
+  nvidia-smi -i $i -pl $NSFMINER_GPUPOWERLIMIT
+  nvidia-settings -a [gpu:$i]/GPUGraphicsClockOffsetAllPerformanceLevels=$NSFMINER_GPUGFXCLOCKOFFSET
+  nvidia-settings -a [gpu:$i]/GPUMemoryTransferRateOffsetAllPerformanceLevels=$NSFMINER_GPUMEMCLOCKOFFSET
+  nvidia-settings -a [gpu:$i]/GPUFanControlState=$NSFMINER_GPUFANCONTROLL
+done
 
 echo "---Starting worker---"
-/opt/nsfminer/nsfminer -R --nocolor -U --HWMON $NSFMINER_HWMON --devices $NSFMINER_GPU \
+/opt/nsfminer/nsfminer -R --nocolor -U --HWMON $NSFMINER_HWMON --devices IDS \
   -P $NSFMINER_TRANSPORT://$NSFMINER_ETHADDRESS.$NSFMINER_WORKERNAME@$NSFMINER_ADDRESS1:$NSFMINER_PORT1 \
   -P $NSFMINER_TRANSPORT://$NSFMINER_ETHADDRESS.$NSFMINER_WORKERNAME@$NSFMINER_ADDRESS2:$NSFMINER_PORT2
 
